@@ -340,9 +340,9 @@ int main() {
                             for (int i = 0; i < row; i++) {
                                 for (int j = 0; j < col; j++) {
                                     FloatRect tileButton = (board[i])[j].sprite.getGlobalBounds();
-                                    if (tileButton.contains(mouse) && !(board[i])[j].isFlagged && !(board[i])[j].isRevealed) {
+                                    if (tileButton.contains(mouse) && !(board[i])[j].isFlagged &&
+                                        !(board[i])[j].isRevealed) {
                                         if ((board[i])[j].hasMine) {
-                                            (board[i])[j].sprite.setTexture(textures["revealed"]);
                                             happy.setTexture(textures["lose"]);
                                             boardOpen = true;
                                             gameOver = true;
@@ -358,7 +358,7 @@ int main() {
                         }
                     }
                     if (event.mouseButton.button == Mouse::Right)
-                        if (!paused)
+                        if (!paused && !gameOver)
                             for (int i = 0; i < row; i++)
                                 for (int j = 0; j < col; j++) {
                                     FloatRect tileButton = (board[i])[j].sprite.getGlobalBounds();
@@ -374,11 +374,22 @@ int main() {
                 }
             }
             gameWindow.clear(Color::White);
-            if (gameOver)
+            if (numRevealed == row * col - mines) {
+                happy.setTexture(textures["win"]);
+                boardOpen = true;
+                gameOver = true;
+                updateLeaders((int) elapsed_time, leaders, name, gameOver);
+            }
+            if (gameOver && numRevealed == row * col - mines) {
                 for (int i = 0; i < row; i++)
                     for (int j = 0; j < col; j++)
                         if ((board[i])[j].hasMine)
                             (board[i])[j].isFlagged = true;
+            } else if (gameOver && numRevealed < row * col - mines)
+                for (int i = 0; i < row; i++)
+                    for (int j = 0; j < col; j++)
+                        if ((board[i])[j].hasMine)
+                            (board[i])[j].isRevealed = true;
             for (int i = 0; i < row; i++) {
                 for (int j = 0; j < col; j++) {
                     gameWindow.draw((board[i])[j].sprite);
@@ -467,14 +478,6 @@ int main() {
             digit.setTextureRect(IntRect((int) elapsed_time % 60 % 10 * 21, 0, 21, 32));
             gameWindow.draw(digit);
             gameWindow.display();
-            if (numRevealed == row * col - mines) {
-                happy.setTexture(textures["win"]);
-                boardOpen = true;
-                paused = true;
-                gameOver = true;
-                updateLeaders((int) elapsed_time, leaders, name, gameOver);
-                numRevealed = 0;
-            }
             if (boardOpen) {
                 _leaders.setString(leaders);
                 RenderWindow leaderWindow(VideoMode(col * 16, row * 16 + 50), "Leaderboard", Style::Close);
@@ -483,6 +486,7 @@ int main() {
                     while (leaderWindow.pollEvent(event))
                         if (event.type == Event::Closed) {
                             leaderWindow.close();
+                            numRevealed++;
                             boardOpen = false;
                             paused = false;
                             ifstream leaderFile("files/leaderboard.txt");
